@@ -1,0 +1,118 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // Or "mysql" or "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Book {
+  id              Int          @id @default(autoincrement())
+  title           String
+  authors         Author[]     @relation("BookAuthors")
+  isbn            String?      @unique
+  genres          Genre[]      @relation("BookGenres")
+  publicationYear Int
+  publisher       String?
+  coverImage      String?
+  pageCount       Int?
+  language        String?
+  description     String?
+  copies          Copy[]
+  BookAuthors     BookAuthors[]
+  BookGenres      BookGenres[]
+
+  @@index([title])
+  @@index([isbn])
+}
+
+model Author {
+  id     Int     @id @default(autoincrement())
+  name   String?
+  books  Book[]  @relation("BookAuthors")
+  BookAuthors BookAuthors[]
+
+  @@index([name])
+}
+
+model Genre {
+  id         Int          @id @default(autoincrement())
+  name       String       @unique
+  books      Book[]       @relation("BookGenres")
+  BookGenres BookGenres[]
+
+  @@index([name])
+}
+
+model Copy {
+  id         Int         @id @default(autoincrement())
+  bookId     Int
+  book       Book        @relation(fields: [bookId], references: [id])
+  status     Status      @default(AVAILABLE)
+  borrowings Borrowing[]
+
+  @@index([bookId])
+  @@index([status])
+}
+
+enum Status {
+  AVAILABLE
+  BORROWED
+  LOST
+  DAMAGED
+}
+
+model User {
+  id         Int         @id @default(autoincrement())
+  email      String      @unique
+  password   String
+  firstName  String?
+  lastName   String?
+  role       Role        @default(USER)
+  borrowings Borrowing[]
+
+  @@index([email])
+  @@index([lastName])
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Borrowing {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  copyId     Int
+  copy       Copy     @relation(fields: [copyId], references: [id])
+  borrowDate DateTime @default(now())
+  dueDate    DateTime
+
+  @@index([userId])
+  @@index([copyId])
+  @@index([borrowDate])
+}
+
+// Junction table for many-to-many relation between Book and Author
+model BookAuthors {
+  bookId   Int
+  authorId Int
+  book     Book   @relation(fields: [bookId], references: [id])
+  author   Author @relation(fields: [authorId], references: [id])
+
+  @@id([bookId, authorId])
+}
+
+// Junction table for many-to-many relation between Book and Genre
+model BookGenres {
+  bookId  Int
+  genreId Int
+  book    Book  @relation(fields: [bookId], references: [id])
+  genre   Genre @relation(fields: [genreId], references: [id])
+
+  @@id([bookId, genreId])
+}
